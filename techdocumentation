@@ -1,0 +1,594 @@
+Option Explicit
+Public TaskRow As Long
+
+
+Sub NewShaft_add()
+
+    Dim Sname As String
+    Dim SnameFound As Object
+    Dim OpSerial As String
+    Dim PkgSerial As String
+    Dim revnum As String
+    Dim SubSuppProc As String
+    Dim subplace As Range
+    Dim NextRow As Long  'utolsó cella, ahol van adat +2 hogy kihagyjon 1 cellát
+    Dim LastRow As Long  'utolsó cella megtalálása, a hivatkozások beírásához (ez csak a loopba használható)
+    Dim answer As String
+    Dim i As Integer
+    Dim o As Integer
+    Dim u As Integer
+    Dim PkgNumber As Integer
+    Dim OpNumber As Integer
+    Dim SubNumber
+    Dim FileToOpen As String
+    Dim Subsuppanswer As VbMsgBoxResult
+    Dim dtToday As Date
+    
+    dtToday = Date
+    
+    Worksheets("Documents").Select
+    'Vevői rajz
+    Sname = VBA.InputBox("Kérlek add meg a tengely azonosítóját")
+                    If StrPtr(Sname) = 0 Then 'Ha nem ír be semmit kapjon üzenetet és lépjen ki a makróból
+                        MsgBox ("Kérlek kezdd újra")
+                        Range("A1").Select
+                        GoTo Leave
+                    End If
+    'ha már szerepel a fenti azonosító
+    Set SnameFound = Range("A:A").Find(What:=Sname, LookIn:=xlValues, LookAt:=xlPart)
+    If Not SnameFound Is Nothing Then
+     MsgBox ("Már szerepel a listában a beírt azonosító. Kérlek válaszd a dokumentum frissítését a főoldalon!")
+     GoTo Leave
+     End If
+    NextRow = Cells(Rows.Count, 1).End(xlUp).Row + 2
+    LastRow = Cells(Rows.Count, 1).End(xlUp).Row
+    Range("A" & NextRow).Select
+    MsgBox ("kérlek válaszd ki a vevői rajzot")
+    FileToOpen = Application.GetOpenFilename(Title:=Sname & "Vevői rajz")
+    If FileToOpen = "False" Or FileToOpen = "" Then 'Ha nem választja ki a vevői rajzot, kapjon üzenetet és lépjen ki
+    MsgBox ("Kérlek kezdd újra")
+    Range("A1").Select
+    GoTo Leave
+    End If
+    ActiveCell.Hyperlinks.Add Anchor:=Selection, Address:=FileToOpen, SubAddress:="", TextToDisplay:=Sname & " " & "Vevői rajz" 'A hiperhivatkozás elnevezése
+    revnum = VBA.InputBox("Mi a vevői rajz verziószáma?")
+                    If StrPtr(revnum) = 0 Then
+                        Do Until Range("A" & NextRow).Value = ""
+                            Range("A" & NextRow).EntireRow.Delete
+                        Loop
+                        MsgBox ("Kérlek kezdd újra")
+                        Range("A1").Select
+                        GoTo Leave
+                    End If
+    Range("A" & NextRow).Offset(0, 1).Value = "'" & revnum
+    Range("A" & NextRow).Offset(0, 2).Value = "'" & dtToday
+    Range("A" & NextRow).Offset(0, 5).FormulaR1C1 = _
+        "=IF(MATCH(RC[-2],Meo_app_person[[#All],[MEO]],0)*AND(MATCH(RC[-1],Sales_app_person[[#All],[Kereskedelem]],0))=2,""X"")"
+    'csomagolási utasítás
+        answer = InputBox("Hány csomagolási utasítás van?")
+                    If StrPtr(answer) = 0 Then 'Történjen valami, ha "cancel"-re nyom
+                        Do Until Range("A" & NextRow).Value = "" 'Addig törölje a sorokat, amíg nem talál üres sort
+                            Range("A" & NextRow).EntireRow.Delete
+                        Loop
+                        MsgBox ("Kérlek kezdd újra") 'Cancel esetén kapjon üzenetet a felhasználó
+                        Range("A1").Select
+                        GoTo Leave
+                    End If
+        PkgNumber = CInt(answer)
+            For o = 1 To PkgNumber
+                PkgSerial = VBA.InputBox("Csomagolási utasítás elnevezése (gibo,klt, stb.):")
+                    If StrPtr(PkgSerial) = 0 Then
+                        Do Until Range("A" & NextRow).Value = ""
+                            Range("A" & NextRow).EntireRow.Delete
+                        Loop
+                        MsgBox ("Kérlek kezdd újra")
+                        Range("A1").Select
+                        GoTo Leave
+                    End If
+            MsgBox ("Kérlek válaszd ki a" & " " & PkgSerial & " " & "csomagolási utasítást!")
+                FileToOpen = Application.GetOpenFilename(Title:=Sname & " " & "Csomagolási utasítás" & PkgSerial)
+                    If FileToOpen = "False" Or FileToOpen = "" Then
+                        Do Until Range("A" & NextRow).Value = ""
+                        Range("A" & NextRow).EntireRow.Delete
+                        Loop
+                        MsgBox ("Kérlek kezdd újra")
+                        Range("A1").Select
+                    GoTo Leave
+                    End If
+                revnum = VBA.InputBox("Mi a csomagolási utasítás verziószáma?")
+                    If StrPtr(revnum) = 0 Then
+                        Do Until Range("A" & NextRow).Value = ""
+                            Range("A" & NextRow).EntireRow.Delete
+                        Loop
+                        MsgBox ("Kérlek kezdd újra")
+                        Range("A1").Select
+                        GoTo Leave
+                    End If
+                Range("A" & LastRow + o + 2).Select
+                ActiveCell.Hyperlinks.Add Anchor:=Selection, Address:=FileToOpen, SubAddress:="", TextToDisplay:=Sname & " " & "Csomagolási utasítás" & " " & PkgSerial
+                Range("A" & LastRow + o + 2).Offset(0, 1).Value = "'" & revnum
+                Range("A" & LastRow + o + 2).Offset(0, 2).Value = "'" & dtToday
+                Range("A" & LastRow + o + 2).Offset(0, 5).FormulaR1C1 = _
+        "=IF(MATCH(RC[-2],Meo_app_person[[#All],[MEO]],0)*AND(MATCH(RC[-1],Sales_app_person[[#All],[Kereskedelem]],0))=2,""X"")"
+            Next o
+    'Műveleti sorrend
+    MsgBox "Válaszd ki a Műveleti sorrendet!"
+    FileToOpen = Application.GetOpenFilename(Title:=Sname & " " & "Műveleti sorrend")
+                    If FileToOpen = "False" Or FileToOpen = "" Then
+                        Do Until Range("A" & NextRow).Value = ""
+                        Range("A" & NextRow).EntireRow.Delete
+                        Loop
+                        MsgBox ("Kérlek kezdd újra")
+                        Range("A1").Select
+                    GoTo Leave
+                    End If
+    revnum = VBA.InputBox("Mi a Műveleti sorrend verziószáma?")
+                    If StrPtr(revnum) = 0 Then
+                        Do Until Range("A" & NextRow).Value = ""
+                            Range("A" & NextRow).EntireRow.Delete
+                        Loop
+                        MsgBox ("Kérlek kezdd újra")
+                        Range("A1").Select
+                        GoTo Leave
+                    End If
+    Range("A" & LastRow + o + 2).Select
+    ActiveCell.Hyperlinks.Add Anchor:=Selection, Address:=FileToOpen, SubAddress:="", TextToDisplay:=Sname & " " & "Műveleti sorrend"
+    Range("A" & LastRow + o + 2).Offset(0, 1).Value = "'" & revnum
+    Range("A" & LastRow + o + 2).Offset(0, 2).Value = "'" & dtToday
+    Range("A" & LastRow + o + 2).Offset(0, 5).FormulaR1C1 = _
+        "=IF(MATCH(RC[-2],Meo_app_person[[#All],[MEO]],0)*AND(MATCH(RC[-1],Sales_app_person[[#All],[Kereskedelem]],0))=2,""X"")"
+    'OP rajzok
+    answer = InputBox("Hány operációból áll a tengely?")
+                    If StrPtr(answer) = 0 Then
+                        Do Until Range("A" & NextRow).Value = ""
+                            Range("A" & NextRow).EntireRow.Delete
+                        Loop
+                        MsgBox ("Kérlek kezdd újra")
+                        Range("A1").Select
+                        GoTo Leave
+                    End If
+    OpNumber = CInt(answer)
+        For i = 1 To OpNumber
+            OpSerial = VBA.InputBox("Operáció száma:")
+                    If StrPtr(OpSerial) = 0 Then
+                        Do Until Range("A" & NextRow).Value = ""
+                            Range("A" & NextRow).EntireRow.Delete
+                        Loop
+                        MsgBox ("Kérlek kezdd újra")
+                        Range("A1").Select
+                        GoTo Leave
+                    End If
+            MsgBox ("Kérlek válaszd ki az OP" & OpSerial & " " & "rajzot!")
+            FileToOpen = Application.GetOpenFilename(Title:=Sname & " " & "OP" & " " & OpSerial)
+                    If FileToOpen = "False" Or FileToOpen = "" Then
+                        Do Until Range("A" & NextRow).Value = ""
+                        Range("A" & NextRow).EntireRow.Delete
+                        Loop
+                        MsgBox ("Kérlek kezdd újra")
+                        Range("A1").Select
+                    GoTo Leave
+                    End If
+                revnum = VBA.InputBox("Mi az operáció verziószáma?")
+                    If StrPtr(revnum) = 0 Then
+                        Do Until Range("A" & NextRow).Value = ""
+                            Range("A" & NextRow).EntireRow.Delete
+                        Loop
+                        MsgBox ("Kérlek kezdd újra")
+                        Range("A1").Select
+                        GoTo Leave
+                    End If
+            Range("A" & LastRow + i + o + 2).Select
+            ActiveCell.Hyperlinks.Add Anchor:=Selection, Address:=FileToOpen, SubAddress:="", TextToDisplay:=Sname & " " & "OP" & OpSerial & " " & "rajz"
+            Range("A" & LastRow + i + o + 2).Offset(0, 1).Value = "'" & revnum
+            Range("A" & LastRow + i + o + 2).Offset(0, 2).Value = "'" & dtToday
+            Range("A" & LastRow + i + o + 2).Offset(0, 5).FormulaR1C1 = _
+        "=IF(MATCH(RC[-2],Meo_app_person[[#All],[MEO]],0)*AND(MATCH(RC[-1],Sales_app_person[[#All],[Kereskedelem]],0))=2,""X"")"
+        Next i
+        'Külsős folyamat kiválasztása
+        Subsuppanswer = MsgBox("Van külsős folyamat a tengelyen?", vbYesNo + vbQuestion + vbDefaultButton2)
+        If Subsuppanswer = vbYes Then
+        
+        Range("A" & NextRow).Offset(0, 6).Value = "X"
+        answer = InputBox("Hány külsős folyamat van?")
+            If StrPtr(answer) = 0 Then 'Történjen valami, ha "cancel"-re nyom
+                           Do Until Range("A" & NextRow).Value = "" 'Addig törölje a sorokat, amíg nem talál üres sort
+                               Range("A" & NextRow).EntireRow.Delete
+                           Loop
+                           MsgBox ("Kérlek kezdd újra") 'Cancel esetén kapjon üzenetet a felhasználó
+                           Range("A1").Select
+                           GoTo Leave
+                       End If
+        SubNumber = CInt(answer)
+            For u = 1 To SubNumber
+again:
+                    SubSuppProc = VBA.InputBox("Melyik folyamat van kiszervezve? Csak a számot írd be. (10,20,30)")
+                             If StrPtr(SubSuppProc) = 0 Then 'ha nem választ folyamatot töröljön mindent
+                                Do Until Range("A" & NextRow).Value = ""
+                                Range("A" & NextRow).EntireRow.Delete
+                                Loop
+                                MsgBox ("Kérlek kezdd újra")
+                                Range("A1").Select
+                                GoTo Leave
+                            End If
+                    Set subplace = Range("A:A").Find(What:=Sname & " " & "OP" & SubSuppProc & " " & "rajz", LookIn:=xlValues, LookAt:=xlWhole)
+                        If Not subplace Is Nothing Then 'Ha nem találja a megadott folyamatot kérje be újra
+                            subplace.Offset(0, 6).Value = "X"
+                        Else: GoTo again
+                        End If
+            Next u
+                Else: GoTo Leave
+                End If
+    NextRow = Cells(Rows.Count, 1).End(xlUp).Row + 1
+Leave:
+    Range("B:B").ClearFormats
+    Range("A1").Select
+    Worksheets("Főoldal").Select
+
+End Sub
+
+Sub shaft_update()
+
+    Dim Shaftname As String
+    Dim docname As String
+    Dim SnameFound As Object
+    Dim SelectDoc As Range
+    Dim FileToOpen As String
+    Dim revnum As String
+    Dim NextRow As Long  'utolsó cella, ahol van adat +1
+    Dim LastRow As Long  'utolsó cella megtalálása, a hivatkozások beírásához
+    Dim dtToday As Date
+    Dim SubSuppProc As String
+    Dim subplace As Range
+    Dim Subsuppanswer As VbMsgBoxResult
+    Dim DocUpdated As String
+    
+    On Error GoTo Leave
+
+    NextRow = Cells(Rows.Count, 1).End(xlUp).Row + 1
+    LastRow = Cells(Rows.Count, 1).End(xlUp).Row
+    dtToday = Date
+    Worksheets("Documents").Select
+    Shaftname = VBA.InputBox("Kérlek add meg a keresett tengely azonosítót")
+                If StrPtr(Shaftname) = 0 Then
+                MsgBox ("Kérlek kezdd előről")
+                Range("A1").Select
+                GoTo Leave
+        Else
+    Set SnameFound = Range("A:A").Find(What:=Shaftname, LookIn:=xlValues, LookAt:=xlPart)
+    If SnameFound Is Nothing Then
+     MsgBox ("Nem található a keresett azonosító")
+     GoTo Leave
+     End If
+            SnameFound.Activate
+        End If
+        'Teljes keresett terület kijelölése
+        If Selection.Offset(1, 0).Range("A1") <> "" Then
+            Range(Selection, Selection.End(xlDown)).Select
+            End If
+onedoc:
+    Set SelectDoc = Application.InputBox("Válaszd ki a frissített dokumentum celláját", , , , , , , 8)
+    If SelectDoc.Cells.Count <> 1 Then
+    MsgBox ("Egyszerre csak egy dokumentációt válassz ki!")
+    GoTo onedoc
+    End If
+    MsgBox ("Válaszd ki a frissített dokumentumot")
+            FileToOpen = Application.GetOpenFilename(Title:=Shaftname)
+                            If FileToOpen = "False" Or FileToOpen = "" Then
+                                MsgBox ("Kérlek kezdd előről")
+                                Range("A1").Select
+                                GoTo Leave
+                            Else
+                            SelectDoc.Copy
+                            SelectDoc.Select
+                            ActiveCell.Hyperlinks.Add Anchor:=Selection, Address:=FileToOpen, SubAddress:="", TextToDisplay:=SelectDoc.Formula
+                            End If
+                            
+            revnum = VBA.InputBox("Mi a dokumentum verziószáma?")
+                            If StrPtr(revnum) = 0 Then
+                            MsgBox ("Kérlek kezdd előről")
+                            Range("A1").Select
+                            GoTo Leave
+                            End If
+            'Dokumentum visszavonása
+            Workbooks.Open "C:\Users\arpad.balogh\Desktop\Visszavont_dokumentumok.xlsx"
+            SelectDoc.Offset(0, 2).Value = "'" & dtToday
+            SelectDoc.EntireRow.Copy
+            Workbooks("Visszavont_dokumentumok.xlsx").Sheets(1).Range("A" & Rows.Count).End(xlUp).Offset(1, 0).PasteSpecial xlPasteValues
+            MsgBox "Válaszd ki a visszavont dokumentációt!"
+            FileToOpen = Application.GetOpenFilename(Title:=Shaftname)
+                            If FileToOpen = "False" Or FileToOpen = "" Then
+                                MsgBox ("Kérlek kezdd előről")
+                                Range("A1").Select
+                                GoTo Leave
+                            Else
+                            Workbooks("Visszavont_dokumentumok.xlsx").Sheets(1).Range("A" & Rows.Count).End(xlUp).Copy
+                            Workbooks("Visszavont_dokumentumok.xlsx").Sheets(1).Range("A" & Rows.Count).End(xlUp).Select
+                            Workbooks("Visszavont_dokumentumok.xlsx").Sheets(1).Range("A" & Rows.Count).End(xlUp).Hyperlinks.Add Anchor:=Selection, Address:=FileToOpen, SubAddress:="", TextToDisplay:=SelectDoc.Formula
+                            End If
+            Workbooks("Visszavont_dokumentumok.xlsx").Sheets(1).Range("D:H").Clear
+            SelectDoc.Offset(0, 1).Value = "'" & revnum
+            ActiveCell.Offset(0, 2).Value = "'" & dtToday
+            ActiveCell.Offset(0, 3).Clear
+            ActiveCell.Offset(0, 4).Clear
+            ActiveWorkbook.Close savechanges:=True
+
+     'Külsős folyamat kiválasztása
+        Subsuppanswer = MsgBox("Van új külsős folyamat a tengelyen?", vbYesNo + vbQuestion + vbDefaultButton2)
+        If Subsuppanswer = vbYes Then
+again:
+                    SubSuppProc = VBA.InputBox("Melyik folyamat van kiszervezve? Csak a számot írd be. (10,20,30)")
+                             If StrPtr(SubSuppProc) = 0 Then 'ha nem választ folyamatot ne csináljon semmit
+                                MsgBox ("Kérlek kezdd újra")
+                                Range("A1").Select
+                                GoTo Leave
+                            End If
+                    Set subplace = Range("A:A").Find(What:=Shaftname & " " & "OP" & SubSuppProc & " " & "rajz", LookIn:=xlValues, LookAt:=xlWhole)
+                        If Not subplace Is Nothing Then 'Ha nem találja a megadott folyamatot kérje be újra
+                            subplace.Offset(0, 6).Value = "X"
+                        Else: GoTo again
+                        End If
+                If Subsuppanswer = vbNo Then GoTo Subdelete
+                End If
+Subdelete:
+            Subsuppanswer = MsgBox("Átkerült operáció külső partnertől belső folyamatra?", vbYesNo + vbQuestion + vbDefaultButton2)
+        If Subsuppanswer = vbYes Then
+againdelete:
+                    SubSuppProc = VBA.InputBox("Melyik folyamat került belső termelésre? Csak a számot írd be. (10,20,30)")
+                             If StrPtr(SubSuppProc) = 0 Then 'ha nem választ folyamatot ne csináljon semmit
+                                MsgBox ("Kérlek kezdd újra")
+                                Range("A1").Select
+                                GoTo Leave
+                            End If
+                    Set subplace = Range("A:A").Find(What:=Shaftname & " " & "OP" & SubSuppProc & " " & "rajz", LookIn:=xlValues, LookAt:=xlWhole)
+                        If Not subplace Is Nothing Then 'Ha nem találja a megadott folyamatot kérje be újra
+                            subplace.Offset(0, 6).Value = ""
+                        Else: GoTo againdelete
+                        End If
+        If Subsuppanswer = vbNo Then GoTo Leave
+        End If
+
+TaskRow = Főoldal.Range("B" & Rows.Count).End(xlUp).Row + 1
+Főoldal.Range("B" & TaskRow).Value = "Frissített dokumentum:" & " " & SelectDoc.Formula & " " & "rev:" & " " & revnum & " " & "Frissítve:" & " " & Now
+'Ha a frissített dokumentum CP törölje a sort
+Leave:
+    Range("A1").Select
+    Főoldal.Select
+    Range("A1").Select
+    
+End Sub
+
+Sub open_documentation_for_changeover()
+
+    Dim Sname As String
+    Dim Pkgcell As Range
+    Dim PkgFound As Object
+    Dim CPFound As Object
+    Dim OPNum As String
+    Dim SnameFound As Object
+    Dim OpnumFound As Object
+    Dim ProcDescnameFound As Object
+    Dim objSelectedRange As Excel.Range
+    Dim objHyperlink As Excel.Hyperlink
+
+    On Error GoTo ErrorHandle
+    
+    
+    Worksheets("Documents").Select
+    
+    Sname = Application.InputBox("Kérlek add meg a keresett tengely azonosítóját")
+    'A kiválasztott tengely megkeresése
+    Set SnameFound = Range("A:A").Find(What:=Sname, LookIn:=xlValues, LookAt:=xlPart)
+        If SnameFound Is Nothing Then
+        MsgBox "A megadott azonosító nem található"
+        GoTo Leave
+        End If
+        SnameFound.Select
+        If Selection.Range("A1") <> "" Then
+            Range(Selection, Selection.End(xlDown)).Select
+            End If
+    'Csomagolási utasítás megnyitása
+onedoc:
+    Set Pkgcell = Application.InputBox("Válaszd ki a szükséges csomagolási utasítás celláját (Kattints rá az A oszlopban)", , , , , , , 8)
+        If Pkgcell.Cells.Count <> 1 Then
+            MsgBox ("Egyszerre csak egy cellát válassz ki!")
+            GoTo onedoc
+        End If
+    Set PkgFound = Pkgcell.Find(What:="csomagolási utasítás", LookIn:=xlValues, LookAt:=xlPart)
+        If PkgFound Is Nothing Then
+            MsgBox "Kérlek csomagolási utasítást válassz ki!"
+            GoTo onedoc
+        End If
+    'Műveleti sorrend megnyitása
+    Set ProcDescnameFound = Range("A:A").Find(What:=Sname & " " & "műveleti", After:=ActiveCell, LookAt:=xlPart)
+            ProcDescnameFound.Select
+    'Operáció kiválasztása
+    OPNum = Application.InputBox("Melyik operációra állunk át? Csak az operáció számát írd be (10,20,30) ")
+    'OP rajz megnyitása
+    Set OpnumFound = Range("A:A").Find(What:="OP" & OPNum, After:=ActiveCell, LookIn:=xlValues, LookAt:=xlPart)
+        If OpnumFound Is Nothing Then
+            MsgBox "A megadott operáció nem található"
+        GoTo Leave
+        End If
+        'CP megnyitása
+    Set CPFound = Range("A:A").Find(What:="Control Plan " & OPNum, After:=ActiveCell, LookIn:=xlValues, LookAt:=xlPart)
+        If CPFound Is Nothing Then
+            MsgBox "A megadott operáció nem található"
+        Else
+            CPFound.Activate
+            Set objSelectedRange = Excel.Application.Selection
+            For Each objHyperlink In objSelectedRange.Hyperlinks
+            objHyperlink.Follow
+            Next
+        End If
+SnameFound.Select
+            Set objSelectedRange = Excel.Application.Selection
+            For Each objHyperlink In objSelectedRange.Hyperlinks
+            objHyperlink.Follow
+            Next
+Pkgcell.Select
+            Set objSelectedRange = Excel.Application.Selection
+            For Each objHyperlink In objSelectedRange.Hyperlinks
+            objHyperlink.Follow
+            Next
+ProcDescnameFound.Select
+            Set objSelectedRange = Excel.Application.Selection
+            For Each objHyperlink In objSelectedRange.Hyperlinks
+            objHyperlink.Follow
+            Next
+OpnumFound.Select
+            Set objSelectedRange = Excel.Application.Selection
+            For Each objHyperlink In objSelectedRange.Hyperlinks
+            objHyperlink.Follow
+            Next
+CPFound.Select
+            Set objSelectedRange = Excel.Application.Selection
+            For Each objHyperlink In objSelectedRange.Hyperlinks
+            objHyperlink.Follow
+            Next
+Leave:
+    Range("A1").Select
+    Worksheets("Főoldal").Select
+    Range("A1").Select
+    Exit Sub
+    
+ErrorHandle:
+MsgBox ("Valami hiba történt. Kérlek kezdd előről!")
+    Range("A1").Select
+    Worksheets("Főoldal").Select
+    Range("A1").Select
+
+End Sub
+
+
+
+Sub MEO_Approval()
+    Dim strUserName As String
+    Dim Sname As String
+    Dim Splace As Range
+    Dim FileToOpen As String
+    Dim revnum As String
+    Dim NextRow As Long  'utolsó cella, ahol van adat +1
+    Dim LastRow As Long  'utolsó cella megtalálása, a hivatkozások beírásához
+    Dim objSelectedRange As Excel.Range
+    Dim objHyperlink As Excel.Hyperlink
+    Dim answer As VbMsgBoxResult
+    
+    
+    Worksheets("Documents").Select
+    LastRow = Cells(Rows.Count, 1).End(xlUp).Row
+    Sname = Application.InputBox("Kérlek add meg a keresett tengely azonosítóját")
+        Set Splace = Range("A:A").Find(What:=Sname, LookIn:=xlValues, LookAt:=xlPart)
+        If Not Splace Is Nothing Then
+            Splace.Select
+            If Selection.Offset(1, 0).Range("A1") <> "" Then
+            Range(Selection, Selection.End(xlDown)).Select
+            End If
+            Set objSelectedRange = Excel.Application.Selection
+            For Each objHyperlink In objSelectedRange.Hyperlinks
+            objHyperlink.Follow
+            Next
+            answer = MsgBox("Átveszed a dokumentumot?", vbYesNo + vbQuestion + vbDefaultButton2)
+                If answer = vbYes Then
+                Selection.Offset(0, 3).Select
+                strUserName = Application.UserName
+                Selection.Value = strUserName
+                Else
+                MsgBox ("A dokumentum nem került átvételre, így nem nyitható meg mások számára!")
+            GoTo Leave
+                End If
+        Else
+            MsgBox ("Még nincs ilyen azonosító")
+            End If
+       
+Leave:
+    Range("A1").Select
+    Worksheets("Főoldal").Select
+End Sub
+
+Sub Sales_Approval()
+    Dim strUserName As String
+    Dim Sname As String
+    Dim Splace As Range
+    Dim FileToOpen As String
+    Dim revnum As String
+    Dim NextRow As Long  'utolsó cella, ahol van adat +1
+    Dim LastRow As Long  'utolsó cella megtalálása, a hivatkozások beírásához
+    Dim objSelectedRange As Excel.Range
+    Dim objHyperlink As Excel.Hyperlink
+    Dim answer As VbMsgBoxResult
+    
+    
+    Worksheets("Documents").Select
+    LastRow = Cells(Rows.Count, 1).End(xlUp).Row
+    Sname = Application.InputBox("Kérlek add meg a keresett tengely azonosítóját")
+        Set Splace = Range("A:A").Find(What:=Sname, LookIn:=xlValues, LookAt:=xlPart)
+        If Not Splace Is Nothing Then
+            Splace.Select
+            If Selection.Offset(1, 0).Range("A1") <> "" Then
+            Range(Selection, Selection.End(xlDown)).Select
+            End If
+            Set objSelectedRange = Excel.Application.Selection
+            For Each objHyperlink In objSelectedRange.Hyperlinks
+            objHyperlink.Follow
+            Next
+            answer = MsgBox("Átveszed a dokumentumot?", vbYesNo + vbQuestion + vbDefaultButton2)
+                If answer = vbYes Then
+                Selection.Offset(0, 4).Select
+                strUserName = Application.UserName
+                Selection.Value = strUserName
+                Else
+                MsgBox ("A dokumentum nem került átvételre, így nem nyitható meg mások számára!")
+            GoTo Leave
+                End If
+        Else
+            MsgBox ("Még nincs ilyen azonosító")
+            End If
+       
+Leave:
+    Range("A1").Select
+    Worksheets("Főoldal").Select
+End Sub
+
+Sub open_external_process()
+
+    Dim Sname As String
+    Dim SnameFound As Object
+    Dim extproc As Object
+    Dim objSelectedRange As Excel.Range
+    Dim objHyperlink As Excel.Hyperlink
+    
+    Worksheets("Documents").Select
+        'Vevői rajz
+        Sname = VBA.InputBox("Kérlek add meg a tengely azonosítóját")
+                        If StrPtr(Sname) = 0 Then 'Ha nem ír be semmit kapjon üzenetet és lépjen ki a makróból
+                            MsgBox ("Kérlek kezdd újra")
+                            Range("A1").Select
+                            GoTo Leave
+                        End If
+    Set SnameFound = Range("A:A").Find(What:=Sname, LookIn:=xlValues, LookAt:=xlPart)
+            If SnameFound Is Nothing Then
+                MsgBox "A megadott azonosító nem található"
+                GoTo Leave
+                End If
+            SnameFound.Select
+            If Selection.Offset(1, 0).Range("A1") <> "" Then
+            Range(Selection, Selection.End(xlDown)).Select
+            End If
+            Selection.Offset(0, 6).Select
+    Set extproc = Selection.Find(What:="X", LookIn:=xlValues, LookAt:=xlPart)
+    SnameFound.Select
+        Set objSelectedRange = Excel.Application.Selection
+            For Each objHyperlink In objSelectedRange.Hyperlinks
+            objHyperlink.Follow
+            Next
+    extproc.Offset(0, -6).Select
+        Set objSelectedRange = Excel.Application.Selection
+            For Each objHyperlink In objSelectedRange.Hyperlinks
+            objHyperlink.Follow
+            Next
+Leave:
+    Range("A1").Select
+    Worksheets("Főoldal").Select
+    Range("A1").Select
+End Sub
+
